@@ -133,33 +133,42 @@ def aggregate_bins(df_binned: pd.DataFrame,
     return agg
 
 
-def vectorize(binned: pd.DataFrame, bin_col: str = "bin_id") -> np.ndarray:
-    """Convert frame-level binned DataFrame into a numpy matrix of features per bin.
+import numpy as np
+import pandas as pd
 
-    Features (columns) in order:
-      0: count_type0  (number of packets with wlan.fc.type == 0)
-      1: bytes_type0  (sum of frame_len for wlan.fc.type == 0)
-      2: count_type2  (number of packets with wlan.fc.type == 2)
-      3: bytes_type2  (sum of frame_len for wlan.fc.type == 2)
-      4: total_bytes  (sum of frame_len for all frames in bin)
-      5: min_size     (minimum frame_len in bin)
-      6: max_size     (maximum frame_len in bin)
-      7: mean_size    (mean frame_len in bin)
-      8: var_size     (variance of frame_len in bin, population var)
-
+def vectorize(
+    binned: pd.DataFrame,
+    bin_col: str = "bin_id",
+    label_col: str = "label",
+    return_y: bool = True,
+) -> tuple[np.ndarray, np.ndarray] | np.ndarray:
+    """
     Returns:
-        numpy.ndarray shape (n_bins, 9) where n_bins = max(bin_id)+1 (bins with no
-        frames are filled with zeros).
+      X: (n_bins, 9) features
+      y: (n_bins,) labels (same label repeated for each bin)
     """
     if bin_col not in binned.columns:
         raise ValueError(f"Expected bin column '{bin_col}' in dataframe")
+    if label_col not in binned.columns:
+        raise ValueError(f"Expected label column '{label_col}' in dataframe")
 
     if binned.empty:
-        return np.zeros((0, 9), dtype=float)
+        X = np.zeros((0, 9), dtype=float)
+        y = np.zeros((0,), dtype=int)
+        return (X, y) if return_y else X
+
+    # get a single label for the whole capture
+    labels = binned[label_col].dropna().unique()
+    if len(labels) != 1:
+        raise ValueError(f"Expected exactly one unique label in '{label_col}', got {labels}")
+    label = int(labels[0])
 
     max_bin = int(binned[bin_col].max())
-    rows = []
     total_bins = max_bin + 1
+
+    X = np.zeros((total_bins, 9), dtype=float)
+    y = np.full((total_bins,), label, dtype=int)
+
     for bid in range(total_bins):
         print(f"\rProcessing bin {bid + 1}/{total_bins}", end="", flush=True)
         grp = binned[binned[bin_col] == bid]
@@ -180,12 +189,9 @@ def vectorize(binned: pd.DataFrame, bin_col: str = "bin_id") -> np.ndarray:
             if np.isnan(var_size):
                 var_size = 0.0
         else:
-            min_size = 0.0
-            max_size = 0.0
-            mean_size = 0.0
-            var_size = 0.0
+            min_size = max_size = mean_size = var_size = 0.0
 
-        rows.append([
+        X[bid] = [
             count_type0,
             bytes_type0,
             count_type2,
@@ -195,10 +201,10 @@ def vectorize(binned: pd.DataFrame, bin_col: str = "bin_id") -> np.ndarray:
             max_size,
             mean_size,
             var_size,
-        ])
+        ]
 
     print()
-    return np.array(rows, dtype=float)
+    return (X, y) if return_y else X
 
 
 def plot_bytes_per_bin(time: pd.Series,

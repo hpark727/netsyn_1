@@ -15,3 +15,4 @@ c1_agg = aggregate_bins(c1_binned)
 c2_agg = aggregate_bins(c2_binned)
 
 plot_bytes_per_bin(c2_agg["bin_start"], c2_agg["bytes_total"])
+
