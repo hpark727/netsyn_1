@@ -1,18 +1,20 @@
-from data_processing import convert_to_df, bin_frames, aggregate_bins, plot_bytes_per_bin
+from data_processing import convert_to_df, bin_frames, aggregate_bins, plot_bytes_per_bin, vectorize_capture
 
 
-PCAP_PATH = ["cla1.pcap", "cla2.pcap"]
+CLASS_1_PATH = "/Users/haelpark/Desktop/class_1_data"
+CLASS_2_PATH = "/Users/haelpark/Desktop/class_2_data"
 
-c1 = convert_to_df(PCAP_PATH[0])
-c2 = convert_to_df(PCAP_PATH[1])
+for i in range(1, 16):
+    path = f"{CLASS_1_PATH}/cap_{i}.pcap"
+    df = convert_to_df(path)
+    df_binned = bin_frames(df)
+    vec = vectorize_capture(df_binned, label = 0, save_dir = "/Users/haelpark/Desktop/c1_embeddings", capture_id=f"embedding_{i}")
 
-print(c2.head)
+for i in range(1, 16):
+    path = f"{CLASS_2_PATH}/cap_{i}.pcap"
+    df = convert_to_df(path)
+    df_binned = bin_frames(df)
+    vec = vectorize_capture(df_binned, label = 1, save_dir = "/Users/haelpark/Desktop/c1_embeddings", capture_id=f"embedding_{i}")
 
-c1_binned = bin_frames(c1)
-c2_binned = bin_frames(c2)
 
-c1_agg = aggregate_bins(c1_binned)
-c2_agg = aggregate_bins(c2_binned)
-
-plot_bytes_per_bin(c2_agg["bin_start"], c2_agg["bytes_total"])
 
